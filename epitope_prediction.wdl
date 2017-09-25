@@ -68,16 +68,27 @@ workflow EpitopePrediction {
             recalibration_report = BaseRecalibrator.recalibration_report,
             ref_dict = ref_dict,
             ref_fasta = ref_fasta,
-            ref_fasta_index = ref_fasta_index,
+            ref_fasta_index = ref_fasta_index
     }
     call HaplotypeCaller {
         input:
             input_bam = ApplyBQSR.recalibrated_bam,
             input_bam_index = ApplyBQSR.recalibrated_bam_index,
-            gvcf_name = output_basename,
+            vcf_name = output_basename,
             ref_dict = ref_dict,
             ref_fasta = ref_fasta,
             ref_fasta_index = ref_fasta_index
+    }
+    call DecomposeAndNormalize {
+        input:
+            input_vcf = HaplotypeCaller.output_vcf,
+            output_basename = output_basename,
+            ref_fasta = ref_fasta,
+            ref_fasta_index = ref_fasta_index
+    }
+    call VepAnnotate {
+        input:
+            input_vcf = DecomposeAndNormalize.output_vcf
     }
 }
 
@@ -232,7 +243,51 @@ task HaplotypeCaller {
             -I ${input_bam}
     }
     output {
-        File output_gvcf = "${vcf_name}.vcf"
+        File output_vcf = "${vcf_name}.vcf"
         #File output_gvcf_index = "${vcf_name}.vcf.tbi"
+    }
+}
+
+task DecomposeAndNormalize {
+    File input_vcf
+    String output_basename
+    File ref_dict
+    File ref_fasta
+    File ref_fasta_index
+
+    command {
+        sed 's/ID=AD,Number=./ID=AD,Number=R/' ${input_vcf} \
+        | vt decompose -s - \
+        | vt normalize -r ${ref_fasta} - > ${output_basename}.dn.vcf
+    }
+    output {
+        File output_vcf = "${output_basename}.dn.vcf"
+    }
+}
+
+task VepAnnotate {
+    File input_vcf
+    String output_basename
+
+    command {
+        perl /cbhomes2/deconti/bin/ensembl-tools-release-75/scripts/variant_effect_predictor/variant_effect_predictor.pl \
+            --cache \
+            --dir ~/.vep \
+            --species homo_sapiens \
+            --cache_version 75 \
+            --stats_file vcf_stats.vep.htm \
+            --offline \
+            --everything \
+            --fork 15 \
+            --vcf \
+            --input_file ${input_vcf} \
+            --output_file ${output_basename}.vep.vcf \
+            --custom ExAC.syn_z.bed.bgz,syn_z,bed,overlap,0 \
+            --custom ExAC.mis_z.bed.bgz,mis_z,bed,overlap,0 \
+            --custom ExAC.lof_z.bed.bgz,lof_z,bed,overlap,0 \
+            --plugin LoF > vep.log 2>&1
+    }
+    output {
+        File output_vcf = "${output_vcf}.dn.vep.vcf"
     }
 }
