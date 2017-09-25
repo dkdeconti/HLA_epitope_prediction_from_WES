@@ -70,7 +70,15 @@ workflow EpitopePrediction {
             ref_fasta = ref_fasta,
             ref_fasta_index = ref_fasta_index,
     }
-
+    call HaplotypeCaller {
+        input:
+            input_bam = ApplyBQSR.recalibrated_bam,
+            input_bam_index = ApplyBQSR.recalibrated_bam_index,
+            gvcf_name = output_basename,
+            ref_dict = ref_dict,
+            ref_fasta = ref_fasta,
+            ref_fasta_index = ref_fasta_index
+    }
 }
 
 ##############################################################################
@@ -208,3 +216,23 @@ task ApplyBQSR {
     }
 }
 
+task HaplotypeCaller {
+    File input_bam
+    File input_bam_index
+    String vcf_name
+    File ref_dict
+    File ref_fasta
+    File ref_fasta_index
+
+    command {
+        java -Xmx8000m -jar /usr/bin_dir/GATK.jar \
+            -T HaplotypeCaller \
+            -R ${ref_fasta} \
+            -o ${vcf_name}.vcf \
+            -I ${input_bam}
+    }
+    output {
+        File output_gvcf = "${vcf_name}.vcf"
+        #File output_gvcf_index = "${vcf_name}.vcf.tbi"
+    }
+}
