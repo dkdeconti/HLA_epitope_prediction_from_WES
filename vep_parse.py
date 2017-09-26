@@ -63,7 +63,10 @@ def main(args):
         #print exac_freq
         lof_annotations = [x for x in annotations if x['LoF'] == 'HC']
         consequences = [annot['Consequence'] for annot in annotations]
-        if max(exac_freq) <= args.minimum: print line
+        if max(exac_freq) <= args.minimum:
+            [(x['Amino_acids'])
+             for x in annotations if x['Amino_acids'] != ""]
+            print line
         #if 'missense_variant' in consequences:
         #    print consequences
 
