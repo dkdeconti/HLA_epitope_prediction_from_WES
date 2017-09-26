@@ -19,6 +19,9 @@ workflow EpitopePrediction {
     File dbsnp_index
     File known_indels
     File known_indels_index
+    File exac_syn
+    File exac_mis
+    File exac_lof
 
     scatter (read_pairs in read_pairs_array) {
         call GetRgids {
@@ -88,11 +91,16 @@ workflow EpitopePrediction {
     }
     call VepAnnotate {
         input:
-            input_vcf = DecomposeAndNormalize.output_vcf
+            input_vcf = DecomposeAndNormalize.output_vcf,
+            output_basename = output_basename,
+            exac_syn = exac_syn,
+            exac_mis = exac_mis,
+            exac_lof = exac_lof
     }
     call FilterForRareVariants {
         input:
-
+            input_vcf = VepAnnotate.output_vcf,
+            output_basename = output_basename
     }
     call BamToFastq {
         input:
@@ -297,9 +305,9 @@ task VepAnnotate {
             --vcf \
             --input_file ${input_vcf} \
             --output_file ${output_basename}.vep.vcf \
-            --custom ExAC.syn_z.bed.bgz,syn_z,bed,overlap,0 \
-            --custom ExAC.mis_z.bed.bgz,mis_z,bed,overlap,0 \
-            --custom ExAC.lof_z.bed.bgz,lof_z,bed,overlap,0 \
+            --custom ${exac_syn},syn_z,bed,overlap,0 \
+            --custom ${exac_mis},mis_z,bed,overlap,0 \
+            --custom ${exac_lof},lof_z,bed,overlap,0 \
             --plugin LoF > vep.log 2>&1
     }
     output {
@@ -312,7 +320,7 @@ task FilterForRareVariants {
     String output_basename
 
     command {
-        python vep_parse.py --vcf ${input_vcf} \
+        python vep_parse.py -m 0.0 --vcf ${input_vcf} \
         > ${output_basename}.dn.vep.flt.vcf;
     }
     output {
