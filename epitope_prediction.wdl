@@ -90,6 +90,18 @@ workflow EpitopePrediction {
         input:
             input_vcf = DecomposeAndNormalize.output_vcf
     }
+
+    call BamToFastq {
+        input:
+            input_bam = ApplyBQSR.recalibrated_bam,
+            output_basename = output_basename
+    }
+    call HlaTyping {
+        input:
+            first = BamToFastq.first_read,
+            second = BamToFastq.second_read,
+            output_basename = output_basename
+    }
 }
 
 ##############################################################################
@@ -270,7 +282,7 @@ task VepAnnotate {
     String output_basename
 
     command {
-        perl /cbhomes2/deconti/bin/ensembl-tools-release-75/scripts/variant_effect_predictor/variant_effect_predictor.pl \
+        perl ~/bin/ensembl-tools-release-75/scripts/variant_effect_predictor/variant_effect_predictor.pl \
             --cache \
             --dir ~/.vep \
             --species homo_sapiens \
@@ -289,5 +301,48 @@ task VepAnnotate {
     }
     output {
         File output_vcf = "${output_vcf}.dn.vep.vcf"
+    }
+}
+
+task BamToFastq {
+    File input_bam
+    String output_basename
+
+    command {
+        ~/bin/java -Xmx2000m -jar ~/bin/picard.jar \
+            SamToFastq \
+            I=${input_bam} \
+            FASTQ=${output_basename}.1.fastq \
+            SECOND_END_FASTQ=${output_basename}.2.fastq;
+    }
+    output {
+        File first_read = "${output_basename}.1.fastq"
+        File second_read = "${output_basename}.2.fastq"
+    }
+}
+
+task HlaTyping {
+    File first
+    File second
+    String output_basename
+
+    command {
+        libdir=~/bin/;
+        freqdir=${libdir}/freq_data;
+        dictdir=${libdir}/dictionary;
+        hlahd.sh \
+            -t 10 \
+            -m 76 \
+            -f ${freqdir} \
+            ${first} \
+            ${second} \
+            ${libdir}/HLA_gene.split.txt \
+            ${dictdir} \
+            ${output_basename} \
+            estimation;
+        gzip -c estimation > estimation.gz
+    }
+    output {
+        File output_results = "estimation.gz"
     }
 }
