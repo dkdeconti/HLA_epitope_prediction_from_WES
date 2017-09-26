@@ -90,7 +90,10 @@ workflow EpitopePrediction {
         input:
             input_vcf = DecomposeAndNormalize.output_vcf
     }
+    call FilterForRareVariants {
+        input:
 
+    }
     call BamToFastq {
         input:
             input_bam = ApplyBQSR.recalibrated_bam,
@@ -304,6 +307,19 @@ task VepAnnotate {
     }
 }
 
+task FilterForRareVariants {
+    File input_vcf
+    String output_basename
+
+    command {
+        python vep_parse.py --vcf ${input_vcf} \
+        > ${output_basename}.dn.vep.flt.vcf;
+    }
+    output {
+        File output_vcf = "${output_vcf}.dn.vep.flt.vcf"
+    }
+}
+
 task BamToFastq {
     File input_bam
     String output_basename
@@ -339,10 +355,10 @@ task HlaTyping {
             ${libdir}/HLA_gene.split.txt \
             ${dictdir} \
             ${output_basename} \
-            estimation;
-        gzip -c estimation > estimation.gz
+            ${output_basename}_estimation;
+        gzip -c ${output_basename}_estimation > ${output_basename}_estimation.gz
     }
     output {
-        File output_results = "estimation.gz"
+        File output_results = "${output_basename}_estimation.gz"
     }
 }

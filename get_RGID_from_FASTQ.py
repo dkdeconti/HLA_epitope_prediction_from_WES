@@ -4,8 +4,18 @@
 Pull RGID information (from CCCB NextSeq naming scheme) from FASTQ.
 """
 
+
 import argparse
 import gzip
+
+
+__author__ = 'dkdeconti'
+__copyright__ = "Copyright 2017"
+__credits__ = ["Derrick DeConti"]
+__license__ = "MIT"
+__maintainer__ = "Derrick DeConti"
+__email__ = "deconti@jimmy.harvard.edu"
+__status__ = "Development"
 
 
 def get_rg_values(filename, sample_name):
