@@ -66,8 +66,8 @@ def main(args):
         if max(exac_freq) == 0.0:
             for x in annotations:
                 if x['Amino_acids'] != "":
-                    print x['Gene'], x['Feature'], x['SYMBOL'], \
-                    x['Protein_position'], x['Amino_acids']
+                    print '\t'.join([x['Gene'], x['Feature'], x['SYMBOL'],
+                                     x['Protein_position'], x['Amino_acids']])
         # Explanations #######################################################
         # annotations = list of dicts, each corresponding to a 
         # transcript-allele pair
