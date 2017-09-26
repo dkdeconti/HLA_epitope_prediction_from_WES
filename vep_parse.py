@@ -8,6 +8,7 @@ import gzip
 import re
 import sys
 
+
 __author__ = 'konradjk, dkdeconti'
 __copyright__ = "Copyright 2017"
 __credits__ = ["Konrad Karczewski", "Derrick DeConti"]
@@ -16,9 +17,10 @@ __maintainer__ = "Derrick DeConti"
 __email__ = "deconti@jimmy.harvard.edu"
 __status__ = "Development"
 
+
 def main(args):
     f = gzip.open(args.vcf) if args.vcf.endswith('.gz') else open(args.vcf)
-    vep_field_names = None
+    field_names = None
     header = None
     for line in f:
         line = line.strip()
@@ -29,7 +31,7 @@ def main(args):
             line = line.lstrip('#')
             #print line
             if line.find('ID=CSQ') > -1:
-                vep_field_names = line.split('Format: ')[-1].strip('">').split('|')
+                field_names = line.split('Format: ')[-1].strip('">').split('|')
             if line.startswith('CHROM'):
                 header = line.split()
                 # Creates dict of index and column header
@@ -37,11 +39,14 @@ def main(args):
                 #print header
             continue
 
-        if vep_field_names is None:
-            print >> sys.stderr, "VCF file does not have a VEP header line. Exiting."
+        if field_names is None:
+            err_output = "VCF file does not have a VEP header line. Exiting."
+            print >> sys.stderr, err_output
             sys.exit(1)
         if header is None:
-            print >> sys.stderr, "VCF file does not have a header line (CHROM POS etc.). Exiting."
+            err_output = "VCF file does not have a header line" + \
+            "(CHROM POS etc.). Exiting."
+            print >> sys.stderr, err_output
             sys.exit(1)
 
         # Pull out annotation info from INFO and ALT fields
@@ -50,38 +55,31 @@ def main(args):
                             if '=' in x else (x, x)
                             for x in re.split(';(?=\w)',
                                               fields[header['INFO']])])
-        #print info_field
 
         # Only reading lines with an annotation after this point
         if 'CSQ' not in info_field: continue
-        annotations = [dict(zip(vep_field_names, x.split('|'))) for x in info_field['CSQ'].split(',') if len(vep_field_names) == len(x.split('|'))]
-        #print annotations
-        #print fields[header['INFO']]
-        #print fields[he
+        annotations = [dict(zip(field_names, x.split('|')))
+                       for x in info_field['CSQ'].split(',')
+                       if len(field_names) == len(x.split('|'))]
         exac_freq = [float(freq) if freq != '' else 0.0
                      for freq in info_field['CSQ'].split('|')[-9:-5]]        
-        #print exac_freq
-        lof_annotations = [x for x in annotations if x['LoF'] == 'HC']
-        consequences = [annot['Consequence'] for annot in annotations]
-        if max(exac_freq) <= args.minimum:
-            [(x['Amino_acids'])
-             for x in annotations if x['Amino_acids'] != ""]
-            print line
-        #if 'missense_variant' in consequences:
-        #    print consequences
-
-        # Code to process annotations and VCF line goes here...
-        #if lof_annotations: print line
-
-        # annotations = list of dicts, each corresponding to a transcript-allele pair
-        # (each dict in annotations contains keys from vep_field_names)
+        if max(exac_freq) == 0.0:
+            for x in annotations:
+                if x['Amino_acids'] != "":
+                    print x['Gene'], x['Feature'], x['SYMBOL'], \
+                    x['Protein_position'], x['Amino_acids']
+        # Explanations #######################################################
+        # annotations = list of dicts, each corresponding to a 
+        # transcript-allele pair
+        # (each dict in annotations contains keys from field_names)
         # lof_annotations = list of dicts, only high-confidence LoF
-        # if len(lof_annotations) > 0 can determine if at least one allele is LoF for at least one transcript
+        # if len(lof_annotations) > 0 can determine if at least one allele is 
+        # LoF for at least one transcript
         # fields = vcf line, can be accessed using:
         # fields[header['CHROM']] for chromosome,
         # fields[header['ALT']] for alt allele,
         # or samples using sample names, as fields[header['sample1_name']]
-
+        ######################################################################
     f.close()
 
 if __name__ == '__main__':
