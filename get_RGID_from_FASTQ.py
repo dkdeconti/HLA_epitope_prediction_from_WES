@@ -15,7 +15,7 @@ __credits__ = ["Derrick DeConti"]
 __license__ = "MIT"
 __maintainer__ = "Derrick DeConti"
 __email__ = "deconti@jimmy.harvard.edu"
-__status__ = "Development"
+__status__ = "Production"
 
 
 def get_rg_values(filename, sample_name):
