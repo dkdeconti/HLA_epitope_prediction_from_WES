@@ -89,9 +89,16 @@ workflow EpitopePrediction {
             ref_fasta = ref_fasta,
             ref_fasta_index = ref_fasta_index
     }
-    call VepAnnotate {
+    call FilterVariants {
         input:
             input_vcf = DecomposeAndNormalize.output_vcf,
+            output_basename = output_basename,
+            ref_fasta = ref_fasta,
+            ref_fasta_index = ref_fasta_index
+    }
+    call VepAnnotate {
+        input:
+            input_vcf = FilterVariants.output_vcf,
             output_basename = output_basename,
             exac_syn = exac_syn,
             exac_mis = exac_mis,
@@ -163,7 +170,7 @@ task BwaMemAndSortFixTags {
             SORT_ORDER="coordinate" \
             CREATE_INDEX=false \
             CREATE_MD5_FILE=false | \
-        java -Xmx1000m -jar /usr/bin_dir/picard.jar \
+        ~/bin/java -Xmx1000m -jar ~/bin/picard.jar \
             SetNmAndUqTags \
             INPUT=/dev/stdin \
             OUTPUT=${output_bam_basename}.sorted.bam \
@@ -211,7 +218,7 @@ task BaseRecalibrator {
     Int preemptible_tries
 
     command {
-        java -Xmx4000m -jar /usr/bin_dir/GATK.jar \
+        ~/bin/java -Xmx4000m -jar ~/bin/gatk.jar \
             -T BaseRecalibrator \
             -R ${ref_fasta} \
             -I ${input_bam} \
@@ -237,7 +244,7 @@ task ApplyBQSR {
     Int preemptible_tries
 
     command {
-        java -Xmx2000m -jar /usr/bin_dir/GATK.jar \
+        ~/bin/java -Xmx2000m -jar ~/bin/gatk.jar \
             -T PrintReads \
             -R ${ref_fasta} \
             -I ${input_bam} \
@@ -259,7 +266,7 @@ task HaplotypeCaller {
     File ref_fasta_index
 
     command {
-        java -Xmx8000m -jar /usr/bin_dir/GATK.jar \
+        ~/bin/java -Xmx8000m -jar ~/bin/gatk.jar \
             -T HaplotypeCaller \
             -R ${ref_fasta} \
             -o ${vcf_name}.vcf \
@@ -288,6 +295,51 @@ task DecomposeAndNormalize {
     }
 }
 
+task FilterVariants {
+    File input_vcf
+    String output_basename
+    File ref_dict
+    File ref_fasta
+    File ref_fasta_index
+
+    command {
+        ~/bin/java -Xmx4000m -jar ~/bin/gatk.jar \
+            -T SelectVariants \
+            -R ${ref_fasta} \
+            -V ${input_vcf} \
+            -selectType SNP \
+            -o raw_snps.vcf;
+        ~/bin/java -Xmx4000m -jar ~/bin/gatk.jar \
+            -T VariantFiltration \
+            -R ${ref_fasta} \
+            -V raw_snps.vcf \
+            --filterExpression "QD < 2.0 || FS > 60.0 || MQ < 40.0 || MQRankSum < -12.5 || ReadPosRankSum < -8.0" \
+            --filterName "minimal_snp_filter" \
+            -o filtered_snps.vcf;
+        ~/bin/java -Xmx4000m -jar ~/bin/gatk.jar \
+            -T SelectVariants \
+            -R ${ref_fasta} \
+            -V ${input_vcf} \
+            -selectType INDEL \
+            -o raw_indels.vcf;
+        ~/bin/java -Xmx4000m -jar ~/bin/gatk.jar \
+            -T VariantFiltration \
+            -R ${ref_fasta} \
+            -V raw_indels.vcf \
+            --filterExpression "QD < 2.0 || FS > 200.0 || ReadPosRankSum < -20.0" \
+            --filterName "minimal_indel_filter" \
+            -o filtered_indels.vcf;
+        ~/bin/java -Xmx8000m -jar ~/bin/gatk.jar \
+            -T CombineVariants \
+            -V filtered_snps.vcf \
+            -V filtered_indels.vcf \
+            -o ${output_basename}.dn.flt.vcf;
+    }
+    output {
+        File output_vcf = "${output_basename}.dn.flt.vcf"
+    }
+}
+
 task VepAnnotate {
     File input_vcf
     String output_basename
@@ -304,14 +356,14 @@ task VepAnnotate {
             --fork 15 \
             --vcf \
             --input_file ${input_vcf} \
-            --output_file ${output_basename}.vep.vcf \
+            --output_file ${output_basename}.dn.flt.vep.vcf \
             --custom ${exac_syn},syn_z,bed,overlap,0 \
             --custom ${exac_mis},mis_z,bed,overlap,0 \
             --custom ${exac_lof},lof_z,bed,overlap,0 \
             --plugin LoF > vep.log 2>&1
     }
     output {
-        File output_vcf = "${output_vcf}.dn.vep.vcf"
+        File output_vcf = "${output_vcf}.dn.flt.vep.vcf"
     }
 }
 
