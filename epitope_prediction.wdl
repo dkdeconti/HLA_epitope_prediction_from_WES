@@ -420,5 +420,23 @@ task HlaTyping {
     }
     output {
         File output_results = "${output_basename}_estimation.gz"
+        File hla_output = "${output_basename}/"
+    }
+}
+
+task NetMhc {
+    File input_fasta
+    File input_hla
+    String output_basename
+
+    command {
+        netMHC \
+            -a ${input_hla} \
+            -inptype 0 \
+            -l 8,9,10 \
+            ${input_fasta} > ${output_basename}.nethmc.out;
+    }
+    output {
+        File nethmc_output = "${output_basename}.nethmc.out"
     }
 }
