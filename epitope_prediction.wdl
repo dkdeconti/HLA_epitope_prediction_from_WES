@@ -22,6 +22,9 @@ workflow EpitopePrediction {
     File exac_syn
     File exac_mis
     File exac_lof
+    String libdir
+    String dictdir
+    String freqdir
 
     scatter (read_pairs in read_pairs_array) {
         call GetRgids {
@@ -54,7 +57,7 @@ workflow EpitopePrediction {
         input:
             input_bam = MergeBamFiles.output_bam,
             input_bam_index = MergeBamFiles.output_bam_index,
-            recalibration_report_filename = output_basename
+            recal_report_filename = output_basename,
             dbsnp = dbsnp,
             dbsnp_index = dbsnp_index,
             known_indels = known_indels,
@@ -118,7 +121,10 @@ workflow EpitopePrediction {
         input:
             first = BamToFastq.first_read,
             second = BamToFastq.second_read,
-            output_basename = output_basename
+            output_basename = output_basename,
+            libdir = libdir,
+            dictdir = dictdir,
+            freqdir = freqdir
     }
 }
 
@@ -191,7 +197,7 @@ task MergeBamFiles {
     command {
         ~/bin/java -Xmx8000m -jar ~/bin/picard.jar \
             MergeSamFiles \
-            I=${sep " I=" input_bams} \
+            I=${sep=" I=" input_bams} \
             O=${output_bam_basename}.bam \
             SORT_ORDER=coordinate \
             ASSUME_SORTED=true;
@@ -343,6 +349,9 @@ task FilterVariants {
 task VepAnnotate {
     File input_vcf
     String output_basename
+    File exac_syn
+    File exac_mis
+    File exac_lof
 
     command {
         perl ~/bin/ensembl-tools-release-75/scripts/variant_effect_predictor/variant_effect_predictor.pl \
@@ -401,6 +410,9 @@ task HlaTyping {
     File first
     File second
     String output_basename
+    String libdir
+    String dictdir
+    String freqdir
 
     command {
         libdir=~/bin/;

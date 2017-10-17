@@ -55,12 +55,15 @@ def main(args):
                             if '=' in x else (x, x)
                             for x in re.split(';(?=\w)',
                                               fields[header['INFO']])])
-
+        print fields
         # Only reading lines with an annotation after this point
         if 'CSQ' not in info_field: continue
         annotations = [dict(zip(field_names, x.split('|')))
                        for x in info_field['CSQ'].split(',')
                        if len(field_names) == len(x.split('|'))]
+        consequences = [annot["Consequence"] for annot in annotations]
+        if 'missense_variant' in consequences:
+            print consequences
         exac_freq = [float(freq) if freq != '' else 0.0
                      for freq in info_field['CSQ'].split('|')[-9:-5]]        
         if max(exac_freq) == 0.0:
