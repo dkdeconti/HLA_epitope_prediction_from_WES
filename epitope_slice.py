@@ -50,10 +50,10 @@ def get_epitope(id_pos_map, protein_map, flank):
             continue
         enst = k
         ensg, name, pos, aa_change = v
-        begin = pos - flank
+        begin = int(pos) - flank
         if begin < 0:
             begin = 0
-        end = pos + flank + 1
+        end = int(pos) + flank + 1
         alt_epitope = ''.join([protein_seq[begin:pos],
                                aa_change,
                                protein_seq[pos+1:end]])
@@ -126,7 +126,7 @@ def main():
     parser.add_argument("--wt", metavar="OUTPUT_wt", required=True,
                         help="filename for wt epitope output FASTA")
     parser.add_argument("-f", "--flanking", metavar="BP",
-                        default=8,
+                        default=8, type=int,
                         help="flanking +/- bp")
     parser.add_argument("input", metavar="INPUT")
     args = parser.parse_args()
