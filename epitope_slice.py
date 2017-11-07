@@ -104,6 +104,7 @@ def write_epitopes(epitopes, alt_filename, wt_filename):
         for k, v in epitopes.items():
             alt_epitope, wt_epitope = k
             gene, enst_list, ensg = v
+            gene_name = '-'.join([gene,])
             enst = [' : '.join(i) for i in enst_list]
             desc = ' | '.join([gene,
                                ' , '.join(enst),
