@@ -27,7 +27,7 @@ def main(args):
 
         # Reading header lines to get VEP and individual arrays
         if line.startswith('#'):
-            print line
+            #print line
             line = line.lstrip('#')
             #print line
             if line.find('ID=CSQ') > -1:
@@ -52,9 +52,9 @@ def main(args):
         # Pull out annotation info from INFO and ALT fields
         fields = line.split('\t')
         info_field = dict([(x.split('=', 1))
-                            if '=' in x else (x, x)
-                            for x in re.split(';(?=\w)',
-                                              fields[header['INFO']])])
+                           if '=' in x else (x, x)
+                           for x in re.split(';(?=\w)',
+                                             fields[header['INFO']])])
         #print fields
         # Only reading lines with an annotation after this point
         if 'CSQ' not in info_field: continue
@@ -65,11 +65,12 @@ def main(args):
         if 'missense_variant' not in consequences:
             continue
         exac_freq = [float(freq) if freq != '' else 0.0
-                     for freq in info_field['CSQ'].split('|')[-9:-5]]        
+                     for freq in info_field['CSQ'].split('|')[-9:-5]]
         if max(exac_freq) == 0.0:
             for x in annotations:
                 if x['Amino_acids'] != "":
-                    print '\t'.join([x['Gene'], x['Feature'], x['SYMBOL'],
+                    print '\t'.join([fields[0], fields[1], x['Gene'], 
+                                     x['Feature'], x['SYMBOL'],
                                      x['Protein_position'], x['Amino_acids']])
         # Explanations #######################################################
         # annotations = list of dicts, each corresponding to a 
@@ -91,8 +92,5 @@ if __name__ == '__main__':
     parser.add_argument('--vcf', '--input', '-i',
                         help='Input VCF file (from VEP+LoF); may be gzipped',
                         required=True)
-    parser.add_argument('-m', '--minimum', metavar="PVALUE",
-                        type=float, default=0.05,
-                        help="Minimum ExAC_all freq for pass")
     args = parser.parse_args()
     main(args)
