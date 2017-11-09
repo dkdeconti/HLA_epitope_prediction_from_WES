@@ -29,12 +29,13 @@ def collapse_epitopes(epitopes):
     """
     output_epitopes = {}
     for k, v in epitopes.items():
-        enst, ensg, name, pos = k
+        enst, ensg, name, pos, chrom, genome_pos = k
         #alt_epitope, wt_epitope = v
         if v in output_epitopes:
-            output_epitopes[v][1].append((enst, str(pos)))
+            output_epitopes[v][3].append((enst, str(pos)))
         else:
-            output_epitopes[v] = [name, [(enst, str(pos))], ensg]
+            output_epitopes[v] = [name, chrom, genome_pos, 
+                                  [(enst, str(pos))], ensg]
     return output_epitopes
 
 
@@ -49,7 +50,7 @@ def get_epitope(id_pos_map, protein_map, flank):
         except KeyError:
             continue
         enst = k
-        ensg, name, pos, aa_change = v
+        ensg, name, pos, aa_change, chrom, genome_pos = v
         begin = int(pos) - flank
         if begin < 0:
             begin = 0
@@ -58,7 +59,8 @@ def get_epitope(id_pos_map, protein_map, flank):
                                aa_change,
                                protein_seq[pos+1:end]])
         wt_epitope = protein_seq[begin: end]
-        epitopes[(enst, ensg, name, pos)] = (alt_epitope, wt_epitope)
+        epitopes[(enst, ensg, name, pos, chrom, genome_pos)] = (alt_epitope,
+                                                                wt_epitope)
     return epitopes
 
 
@@ -72,8 +74,10 @@ def parse_input_tsv(filename):
             arow = line.strip('\n').split('\t')
             if len(arow) <= 1: continue # skip empty lines
             # skips if insertion or stop mutation
-            if len(arow[4]) == 3 or arow[4][-1] != '*':
-                output_map[arow[1]] = (arow[0], arow[2], int(arow[3]), arow[4][-1])
+            if len(arow[6]) == 3 or arow[6][-1] != '*':
+                #print (arow[4], int(arow[5]), arow[6][-1], arow[0], arow[1])
+                output_map[arow[3]] = (arow[2], arow[4], int(arow[5]),
+                                       arow[6][-1],  arow[0], arow[1])
     return output_map
 
 
@@ -103,9 +107,9 @@ def write_epitopes(epitopes, alt_filename, wt_filename):
     with open(alt_filename, 'w') as out_alt, open(wt_filename, 'w') as out_wt:
         for k, v in epitopes.items():
             alt_epitope, wt_epitope = k
-            gene, enst_list, ensg = v
+            gene, chrom, genome_pos, enst_list, ensg = v
             enst = [' : '.join(i) for i in enst_list]
-            desc = ' | '.join([gene,
+            desc = ' | '.join(['_'.join([gene, chrom, genome_pos]),
                                ' , '.join(enst),
                                ensg])
             out_alt.write('>' + desc + '\n' + alt_epitope + '\n')
@@ -126,7 +130,7 @@ def main():
     parser.add_argument("--wt", metavar="OUTPUT_wt", required=True,
                         help="filename for wt epitope output FASTA")
     parser.add_argument("-f", "--flanking", metavar="BP",
-                        default=8, type=int,
+                        default=11, type=int,
                         help="flanking +/- bp")
     parser.add_argument("input", metavar="INPUT")
     args = parser.parse_args()
@@ -136,7 +140,6 @@ def main():
     epitopes = collapse_epitopes(get_epitope(id_pos_map, protein_map,
                                              args.flanking))
     write_epitopes(epitopes, args.alt, args.wt)
-    
 
 
 if __name__ == "__main__":
