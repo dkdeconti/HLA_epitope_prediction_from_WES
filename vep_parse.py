@@ -68,6 +68,7 @@ def main(args):
                      for freq in info_field['CSQ'].split('|')[-9:-5]]
         if max(exac_freq) == 0.0:
             for x in annotations:
+                # ToDo Add print out of the chrom, begin, end of variant
                 if x['Amino_acids'] != "":
                     #print fields
                     name = '-'.join([fields[0], fields[1], x['SYMBOL'],
